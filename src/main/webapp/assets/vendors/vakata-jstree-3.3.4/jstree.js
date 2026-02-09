@@ -513,7 +513,37 @@
 					return this.nodeType === 3 && (!this.nodeValue || /^\s+$/.test(this.nodeValue));
 				})
 				.remove();
-			this.element.html("<"+"ul class='jstree-container-ul jstree-children' role='group'><"+"li id='j"+this._id+"_loading' class='jstree-initial-node jstree-loading jstree-leaf jstree-last' role='tree-item'><i class='jstree-icon jstree-ocl'></i><"+"a class='jstree-anchor' href='#'><i class='jstree-icon jstree-themeicon-hidden'></i>" + this.get_string("Loading ...") + "</a></li></ul>");
+			// Create DOM elements safely to prevent XSS using native DOM APIs
+			var ul = document.createElement('ul');
+			ul.className = 'jstree-container-ul jstree-children';
+			ul.setAttribute('role', 'group');
+
+			var li = document.createElement('li');
+			li.id = 'j' + this._id + '_loading'; // Safe: property assignment escapes special characters
+			li.className = 'jstree-initial-node jstree-loading jstree-leaf jstree-last';
+			li.setAttribute('role', 'treeitem');
+
+			var ocl = document.createElement('i');
+			ocl.className = 'jstree-icon jstree-ocl';
+
+			var anchor = document.createElement('a');
+			anchor.className = 'jstree-anchor';
+			anchor.href = '#';
+
+			var themeicon = document.createElement('i');
+			themeicon.className = 'jstree-icon jstree-themeicon-hidden';
+
+			// Safely set text content - handles null/undefined from get_string
+			var loadingText = this.get_string("Loading ...");
+			anchor.appendChild(themeicon);
+			anchor.appendChild(document.createTextNode(loadingText != null ? loadingText : "Loading ..."));
+
+			li.appendChild(ocl);
+			li.appendChild(anchor);
+			ul.appendChild(li);
+
+			// Clear existing content and append new structure
+			this.element.empty().append(ul);
 			this.element.attr('aria-activedescendant','j' + this._id + '_loading');
 			this._data.core.li_height = this.get_container_ul().children("li").first().outerHeight() || 24;
 			this._data.core.node = this._create_prototype_node();
@@ -3495,7 +3525,37 @@
 
 			var c = this.get_container_ul()[0].className;
 			if(!skip_loading) {
-				this.element.html("<"+"ul class='"+c+"' role='group'><"+"li class='jstree-initial-node jstree-loading jstree-leaf jstree-last' role='treeitem' id='j"+this._id+"_loading'><i class='jstree-icon jstree-ocl'></i><"+"a class='jstree-anchor' href='#'><i class='jstree-icon jstree-themeicon-hidden'></i>" + this.get_string("Loading ...") + "</a></li></ul>");
+				// Create DOM elements safely to prevent XSS using native DOM APIs
+				var ul = document.createElement('ul');
+				ul.className = c;
+				ul.setAttribute('role', 'group');
+
+				var li = document.createElement('li');
+				li.className = 'jstree-initial-node jstree-loading jstree-leaf jstree-last';
+				li.setAttribute('role', 'treeitem');
+				li.id = 'j' + this._id + '_loading'; // Safe: property assignment escapes special characters
+
+				var ocl = document.createElement('i');
+				ocl.className = 'jstree-icon jstree-ocl';
+
+				var anchor = document.createElement('a');
+				anchor.className = 'jstree-anchor';
+				anchor.href = '#';
+
+				var themeicon = document.createElement('i');
+				themeicon.className = 'jstree-icon jstree-themeicon-hidden';
+
+				// Safely set text content - handles null/undefined from get_string
+				var loadingText = this.get_string("Loading ...");
+				anchor.appendChild(themeicon);
+				anchor.appendChild(document.createTextNode(loadingText != null ? loadingText : "Loading ..."));
+
+				li.appendChild(ocl);
+				li.appendChild(anchor);
+				ul.appendChild(li);
+
+				// Clear existing content and append new structure
+				this.element.empty().append(ul);
 				this.element.attr('aria-activedescendant','j'+this._id+'_loading');
 			}
 			this.load_node($.jstree.root, function (o, s) {
