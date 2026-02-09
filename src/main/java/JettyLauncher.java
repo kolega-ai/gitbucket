@@ -93,12 +93,6 @@ public class JettyLauncher {
                         case "--key_store_path":
                             keyStorePath = dim[1];
                             break;
-                        case "--key_store_password":
-                            keyStorePassword = dim[1];
-                            break;
-                        case "--key_manager_password":
-                            keyManagerPassword = dim[1];
-                            break;
                         case "--redirect_https":
                             redirectHttps = dim[1];
                             break;
@@ -162,12 +156,10 @@ public class JettyLauncher {
                     " or GITBUCKET_KEYSTOREPATH environment variable."));
 
             sslContextFactory.setKeyStorePassword(requireNonNull(keyStorePassword,
-                "You must specify a an SSL keystore password via the --key_store_password argument" +
-                    " or GITBUCKET_KEYSTOREPASSWORD environment variable."));
+                "You must specify an SSL keystore password via the GITBUCKET_KEYSTOREPASSWORD environment variable."));
 
             sslContextFactory.setKeyManagerPassword(requireNonNull(keyManagerPassword,
-                "You must specify a key manager password via the --key_manager_password' argument" +
-                    " or GITBUCKET_KEYMANAGERPASSWORD environment variable."));
+                "You must specify a key manager password via the GITBUCKET_KEYMANAGERPASSWORD environment variable."));
 
             final HttpConfiguration httpsConfig = new HttpConfiguration(httpConfig);
             httpsConfig.addCustomizer(new SecureRequestCustomizer());
