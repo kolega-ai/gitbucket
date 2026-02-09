@@ -366,12 +366,14 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
   })
 
   post("/admin/plugins/_reload")(adminOnly {
+    csrfGuard()
     PluginRegistry.reload(request.getServletContext, loadSystemSettings(), request2Session(request).conn)
     flash.update("info", "All plugins were reloaded.")
     redirect("/admin/plugins")
   })
 
   post("/admin/plugins/:pluginId/_uninstall")(adminOnly {
+    csrfGuard()
     val pluginId = params("pluginId")
 
     if (PluginRegistry().getPlugins().exists(_.pluginId == pluginId)) {
