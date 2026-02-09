@@ -12,24 +12,34 @@
           @if(i != 0){
             <hr>
           }
-          <strong style="line-height: 30px;">@key.title</strong> (@SshUtil.fingerPrint(key.publicKey).getOrElse("Key is invalid."))
-          <a href="@context.path/@account.userName/_ssh/delete/@key.sshKeyId" class="btn btn-sm btn-danger pull-right">Delete</a>
+          <div class="ssh-key-item" style="line-height: 30px;">
+            <strong>@key.title</strong> (@SshUtil.fingerPrint(key.publicKey).getOrElse("Key is invalid."))
+            @* Secure delete form with CSRF protection - changed from insecure GET link *@
+            <form method="POST" action="@context.path/@account.userName/_ssh/delete/@key.sshKeyId" style="display: inline-block; float: right;">
+              @context.csrfTokenInput
+              <button type="submit" class="btn btn-sm btn-danger" 
+                      onclick="return confirm('Are you sure you want to delete this SSH key? This action cannot be undone.');">Delete</button>
+            </form>
+          </div>
         }
       </div>
     </div>
     <form method="POST" action="@context.path/@account.userName/_ssh" validate="true" autocomplete="off">
+      @* CSRF Token for security - prevents Cross-Site Request Forgery attacks *@
+      @context.csrfTokenInput
       <div class="panel panel-default">
         <div class="panel-heading strong">Add a public SSH Key</div>
         <div class="panel-body">
           <fieldset class="form-group">
             <label for="title" class="strong">Title</label>
             <div><span id="error-title" class="error"></span></div>
-            <input type="text" name="title" id="title" class="form-control"/>
+            <input type="text" name="title" id="title" class="form-control" placeholder="e.g., Work Laptop" maxlength="100"/>
           </fieldset>
           <fieldset class="form-group">
             <label for="publicKey" class="strong">Key</label>
             <div><span id="error-publicKey" class="error"></span></div>
-            <textarea name="publicKey" id="publicKey" class="form-control" style="height: 200px;"></textarea>
+            <textarea name="publicKey" id="publicKey" class="form-control" style="height: 200px;" placeholder="ssh-rsa AAAA... or ssh-ed25519 AAAA..."></textarea>
+            <small class="form-text text-muted">Paste your public key here. Supported formats: RSA, DSA, ECDSA, ED25519</small>
           </fieldset>
           <input type="submit" class="btn btn-success" value="Add"/>
         </div>
