@@ -36,6 +36,7 @@ class AccountController
     with PrioritiesService
     with RepositoryCreationService
     with RequestCache
+    with CsrfProtectionSupport
 
 trait AccountControllerBase extends AccountManagementControllerBase {
   self: AccountService & RepositoryService & ActivityService & WikiService & LabelsService & SshKeyService &
@@ -654,7 +655,7 @@ trait AccountControllerBase extends AccountManagementControllerBase {
       val token = params("token")
       decodeResetPasswordToken(token)
         .map { _ =>
-          html.resetform(token)
+          html.resetform(token, csrfToken)
         }
         .getOrElse(NotFound())
     } else NotFound()
@@ -662,14 +663,18 @@ trait AccountControllerBase extends AccountManagementControllerBase {
 
   post("/reset/form", resetPasswordForm) { form =>
     if (context.settings.basicBehavior.allowResetPassword) {
-      decodeResetPasswordToken(form.token)
-        .flatMap { mailAddress =>
-          getAccountByMailAddress(mailAddress).map { account =>
-            updateAccount(account.copy(password = pbkdf2_sha256(form.password)))
-            html.resetcomplete()
+      csrfProtected {
+        decodeResetPasswordToken(form.token)
+          .flatMap { mailAddress =>
+            getAccountByMailAddress(mailAddress).map { account =>
+              updateAccount(account.copy(password = pbkdf2_sha256(form.password)))
+              // Regenerate CSRF token after sensitive operation
+              regenerateCsrfToken()
+              html.resetcomplete()
+            }
           }
-        }
-        .getOrElse(NotFound())
+          .getOrElse(NotFound())
+      }
     } else NotFound()
   }
 
