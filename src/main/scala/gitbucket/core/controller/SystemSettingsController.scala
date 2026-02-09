@@ -14,6 +14,7 @@ import org.apache.commons.mail.EmailException
 import org.json4s.jackson.Serialization
 import org.scalatra.*
 import org.scalatra.forms.*
+import org.scalatra.forms.CsrfTokenSupport
 import org.scalatra.i18n.Messages
 
 import scala.collection.mutable.ListBuffer
@@ -24,6 +25,7 @@ class SystemSettingsController
     with AccountService
     with RepositoryService
     with AdminAuthenticator
+    with CsrfTokenSupport
 
 case class Table(name: String, columns: Seq[Column])
 case class Column(name: String, primaryKey: Boolean)
@@ -531,10 +533,11 @@ trait SystemSettingsControllerBase extends AccountManagementControllerBase {
   get("/admin/data")(adminOnly {
     import gitbucket.core.util.JDBCUtil.*
     val session = request2Session(request)
-    html.data(session.conn.allTableNames())
+    html.data(session.conn.allTableNames(), csrfKey, csrfToken)
   })
 
   post("/admin/export")(adminOnly {
+    csrfGuard()
     import gitbucket.core.util.JDBCUtil.*
     val file = request2Session(request).conn.exportAsSQL(request.getParameterValues("tableNames").toSeq)
 
