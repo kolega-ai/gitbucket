@@ -26,11 +26,44 @@ if (typeof jQuery === 'undefined') {
 +function ($) {
   'use strict';
 
+  // Security utilities for XSS prevention
+  var htmlEscape = function (str) {
+    if (str == null) {
+      return '';
+    }
+    str = String(str);
+    var escapeMap = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+      '`': '&#x60;',
+      '/': '&#x2F;'
+    };
+    var escapeRegex = /[&<>"'`\/]/g;
+    return str.replace(escapeRegex, function(char) {
+      return escapeMap[char];
+    });
+  };
+
+  var isTrustedHTML = function (value) {
+    return value && value.__textcompleteTrusted === true;
+  };
+
+  var trustedHTML = function (html) {
+    return {
+      __textcompleteTrusted: true,
+      toString: function() { return String(html); }
+    };
+  };
+
   var warn = function (message) {
     if (console.warn) { console.warn(message); }
   };
 
   var id = 1;
+=======
 
   $.fn.textcomplete = function (strategies, option) {
     var args = Array.prototype.slice.call(arguments);
@@ -356,7 +389,12 @@ if (typeof jQuery === 'undefined') {
   });
 
   $.fn.textcomplete.Completer = Completer;
+  
+  // Expose security utilities for user access
+  $.fn.textcomplete.htmlEscape = htmlEscape;
+  $.fn.textcomplete.trustedHTML = trustedHTML;
 }(jQuery);
+=======
 
 +function ($) {
   'use strict';
@@ -766,42 +804,102 @@ if (typeof jQuery === 'undefined') {
         if (include(this.data, datum)) { continue; }
         index = this.data.length;
         this.data.push(datum);
+        
+        // Security fix: Escape template output to prevent XSS
+        var templateResult = datum.strategy.template(datum.value, datum.term);
+        var safeContent;
+        
+        if (isTrustedHTML(templateResult)) {
+          // User has explicitly marked this as trusted HTML
+          safeContent = templateResult.toString();
+        } else if (datum.strategy.escapeTemplate !== false) {
+          // Default: escape template output for security
+          safeContent = htmlEscape(templateResult);
+        } else {
+          // Legacy mode: user has opted out of escaping
+          safeContent = templateResult;
+          if (console && console.warn && !datum.strategy._escapeWarningShown) {
+            console.warn('Textcomplete: escapeTemplate=false is deprecated and insecure. Use trustedHTML() for intentional raw HTML.');
+            datum.strategy._escapeWarningShown = true;
+          }
+        }
+        
         html += '<li class="textcomplete-item" data-index="' + index + '"><a>';
-        html +=   datum.strategy.template(datum.value, datum.term);
+        html += safeContent;
         html += '</a></li>';
       }
       return html;
     },
+=======
 
     _renderHeader: function (unzippedData) {
       if (this.header) {
         if (!this._$header) {
           this._$header = $('<li class="textcomplete-header"></li>').prependTo(this.$el);
         }
-        var html = $.isFunction(this.header) ? this.header(unzippedData) : this.header;
-        this._$header.html(html);
+        
+        var content = $.isFunction(this.header) ? this.header(unzippedData) : this.header;
+        
+        // Security fix: Handle header content safely
+        if (isTrustedHTML(content)) {
+          // User has explicitly marked this as trusted HTML
+          this._$header.html(content.toString());
+        } else if ($.isFunction(this.header)) {
+          // Function output treated as text (potentially contains user data)
+          this._$header.text(content);
+        } else {
+          // Static string assumed to be safe developer-controlled HTML
+          this._$header.html(content);
+        }
       }
     },
+=======
 
     _renderFooter: function (unzippedData) {
       if (this.footer) {
         if (!this._$footer) {
           this._$footer = $('<li class="textcomplete-footer"></li>').appendTo(this.$el);
         }
-        var html = $.isFunction(this.footer) ? this.footer(unzippedData) : this.footer;
-        this._$footer.html(html);
+        
+        var content = $.isFunction(this.footer) ? this.footer(unzippedData) : this.footer;
+        
+        // Security fix: Handle footer content safely
+        if (isTrustedHTML(content)) {
+          // User has explicitly marked this as trusted HTML
+          this._$footer.html(content.toString());
+        } else if ($.isFunction(this.footer)) {
+          // Function output treated as text (potentially contains user data)
+          this._$footer.text(content);
+        } else {
+          // Static string assumed to be safe developer-controlled HTML
+          this._$footer.html(content);
+        }
       }
     },
+=======
 
     _renderNoResultsMessage: function (unzippedData) {
       if (this.noResultsMessage) {
         if (!this._$noResultsMessage) {
           this._$noResultsMessage = $('<li class="textcomplete-no-results-message"></li>').appendTo(this.$el);
         }
-        var html = $.isFunction(this.noResultsMessage) ? this.noResultsMessage(unzippedData) : this.noResultsMessage;
-        this._$noResultsMessage.html(html);
+        
+        var content = $.isFunction(this.noResultsMessage) ? this.noResultsMessage(unzippedData) : this.noResultsMessage;
+        
+        // Security fix: Handle no results message content safely
+        if (isTrustedHTML(content)) {
+          // User has explicitly marked this as trusted HTML
+          this._$noResultsMessage.html(content.toString());
+        } else if ($.isFunction(this.noResultsMessage)) {
+          // Function output treated as text (potentially contains user data)
+          this._$noResultsMessage.text(content);
+        } else {
+          // Static string assumed to be safe developer-controlled HTML
+          this._$noResultsMessage.html(content);
+        }
       }
     },
+=======
 
     _renderContents: function (html) {
       if (this._$footer) {
@@ -1227,26 +1325,20 @@ if (typeof jQuery === 'undefined') {
         range.selectNodeContents(range.startContainer);
         range.deleteContents();
         
-        // create temporary elements
-        var preWrapper = this.el.ownerDocument.createElement("div");
-        preWrapper.innerHTML = pre;
-        var postWrapper = this.el.ownerDocument.createElement("div");
-        postWrapper.innerHTML = post;
+        // Security fix: Use textContent instead of innerHTML to prevent XSS
+        // Create text nodes directly to safely insert the replacement text
+        var preTextNode = this.el.ownerDocument.createTextNode(pre);
+        var postTextNode = this.el.ownerDocument.createTextNode(post);
         
-        // create the fragment thats inserted
+        // Create document fragment for efficient insertion
         var fragment = this.el.ownerDocument.createDocumentFragment();
-        var childNode;
-        var lastOfPre;
-        while (childNode = preWrapper.firstChild) {
-        	lastOfPre = fragment.appendChild(childNode);
-        }
-        while (childNode = postWrapper.firstChild) {
-        	fragment.appendChild(childNode);
-        }
+        fragment.appendChild(preTextNode);
+        fragment.appendChild(postTextNode);
         
-        // insert the fragment & jump behind the last node in "pre"
+        // Insert the fragment and position cursor after the "pre" text
         range.insertNode(fragment);
-        range.setStartAfter(lastOfPre);
+        range.setStartAfter(preTextNode);
+=======
         
         range.collapse(true);
         sel.removeAllRanges();
