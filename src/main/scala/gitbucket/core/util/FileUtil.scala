@@ -3,9 +3,12 @@ package gitbucket.core.util
 import org.apache.commons.io.FileUtils
 import org.apache.tika.Tika
 import java.io.File
-import scala.util.Random
+import java.security.SecureRandom
+import java.util.Base64
 
 object FileUtil {
+  // Thread-safe SecureRandom instance for generating cryptographically secure file IDs
+  private val secureRandom: SecureRandom = new SecureRandom()
 
   def getMimeType(name: String): String = {
     val tika = new Tika()
@@ -41,7 +44,17 @@ object FileUtil {
 
   def isText(content: Array[Byte]): Boolean = !content.contains(0)
 
-  def generateFileId: String = s"${System.currentTimeMillis}${Random.alphanumeric.take(10).mkString}"
+  /**
+   * Generates a cryptographically secure file ID.
+   * Uses 128 bits of entropy with URL-safe Base64 encoding.
+   * 
+   * @return A 22-character URL-safe file ID string
+   */
+  def generateFileId: String = {
+    val bytes = new Array[Byte](16) // 128 bits of entropy
+    secureRandom.nextBytes(bytes)
+    Base64.getUrlEncoder.withoutPadding().encodeToString(bytes)
+  }
 
   def getExtension(name: String): String =
     name.lastIndexOf('.') match {
