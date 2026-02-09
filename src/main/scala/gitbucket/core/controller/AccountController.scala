@@ -36,6 +36,7 @@ class AccountController
     with PrioritiesService
     with RepositoryCreationService
     with RequestCache
+    with CsrfProtection
 
 trait AccountControllerBase extends AccountManagementControllerBase {
   self: AccountService & RepositoryService & ActivityService & WikiService & LabelsService & SshKeyService &
@@ -378,11 +379,18 @@ trait AccountControllerBase extends AccountManagementControllerBase {
     redirect(s"/$userName/_ssh")
   })
 
-  get("/:userName/_ssh/delete/:id")(oneselfOnly {
+  post("/:userName/_ssh/delete/:id")(oneselfOnly {
     val userName = params("userName")
     val sshKeyId = params("id").toInt
     deletePublicKey(userName, sshKeyId)
     redirect(s"/$userName/_ssh")
+  })
+
+  // Deprecated GET route for backwards compatibility - redirects without deleting
+  get("/:userName/_ssh/delete/:id")(oneselfOnly {
+    val userName = params("userName")
+    logger.warn(s"Deprecated GET delete endpoint accessed for SSH key deletion by user $userName")
+    redirect(s"/$userName/_ssh?error=invalid_request")
   })
 
   get("/:userName/_gpg")(oneselfOnly {

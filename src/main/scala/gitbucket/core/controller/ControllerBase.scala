@@ -361,6 +361,25 @@ case class Context(
   }
   val sidebarCollapse: Boolean = request.getSession.getAttribute("sidebar-collapse") != null
 
+  /**
+   * Get CSRF token for current session - creates one if it doesn't exist
+   */
+  lazy val csrfToken: String = {
+    gitbucket.core.util.CsrfUtil.getOrCreateToken(request.getSession(true))
+  }
+
+  /**
+   * Generate hidden input field with CSRF token for forms
+   */
+  def csrfTokenInput: play.twirl.api.Html = {
+    play.twirl.api.Html(s"""<input type="hidden" name="${gitbucket.core.util.CsrfUtil.tokenParameterName}" value="$csrfToken" />""")
+  }
+
+  /**
+   * Get token parameter name for JavaScript usage
+   */
+  def csrfTokenName: String = gitbucket.core.util.CsrfUtil.tokenParameterName
+
   def withLoginAccount(f: Account => Any): Any = {
     loginAccount match {
       case Some(loginAccount) => f(loginAccount)
