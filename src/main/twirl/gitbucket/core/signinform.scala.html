@@ -7,6 +7,7 @@
     @if(context.settings.oidcAuthentication){
       <li class="list-group-item">
         <form action="@context.path/signin/oidc" method="POST">
+          <input type="hidden" name="csrf_token" value="@context.csrfToken" />
           <input type="hidden" name="hash"/>
           <input type="submit" class="btn btn-success" value="Sign in with OpenID Connect"
           onClick="this.form.hash.value = window.location.hash;"/>
@@ -15,6 +16,7 @@
     }
     <li class="list-group-item">
       <form action="@context.path/signin" method="POST" validate="true" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="@context.csrfToken" />
         <div class="form-group">
           <label for="userName">Username:</label>
           <span id="error-userName" class="error"></span>

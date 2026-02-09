@@ -16,6 +16,11 @@ object Keys {
     val LoginAccount = "loginAccount"
 
     /**
+     * Session key for the CSRF protection token.
+     */
+    val CsrfToken = "csrfToken"
+
+    /**
      * Session key for the issue search condition in dashboard.
      */
     val DashboardIssues = "dashboard/issues"

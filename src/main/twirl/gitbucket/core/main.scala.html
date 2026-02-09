@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>@title</title>
+    <meta name="csrf-token" content="@context.csrfToken" />
     <meta property="og:title" content="@title" />
     <meta property="og:type" content="object" />
     <meta property="og:url" content="@context.request.getRequestURL" />
@@ -142,6 +143,18 @@
     </div>
     <script>
       $(function(){
+        // Set up CSRF token for all AJAX requests
+        var csrfToken = $('meta[name="csrf-token"]').attr('content');
+        if (csrfToken) {
+          $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+              if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !settings.crossDomain) {
+                xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+              }
+            }
+          });
+        }
+        
         @*
         $('#search').submit(function(){
           return $.trim($(this).find('input[name=query]').val()) != '';

@@ -680,6 +680,12 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   })
 
   post("/groups/new", newGroupForm)(usersOnly { form =>
+    // Validate CSRF token
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
+    
     createGroup(form.groupName, form.description, form.url)
     updateGroupMembers(
       form.groupName,
