@@ -32,6 +32,11 @@ class IndexController
     with AccountFederationService
     with OpenIDConnectService
     with RequestCache
+    with CsrfProtection {
+  
+  // Enable CSRF protection for all state-changing operations
+  csrfGuard()
+}
 
 trait IndexControllerBase extends ControllerBase {
   self: RepositoryService & ActivityService & AccountService & RepositorySearchService & UsersAuthenticator &

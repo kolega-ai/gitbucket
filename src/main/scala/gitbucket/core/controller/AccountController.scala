@@ -13,6 +13,7 @@ import gitbucket.core.util.Directory._
 import gitbucket.core.util.Implicits._
 import gitbucket.core.util.StringUtil._
 import gitbucket.core.util._
+import gitbucket.core.util.CsrfProtection
 import org.scalatra.i18n.Messages
 import org.scalatra.BadRequest
 import org.scalatra.forms._
@@ -36,6 +37,11 @@ class AccountController
     with PrioritiesService
     with RepositoryCreationService
     with RequestCache
+    with CsrfProtection {
+  
+  // Enable CSRF protection for all state-changing operations
+  csrfGuard()
+}
 
 trait AccountControllerBase extends AccountManagementControllerBase {
   self: AccountService & RepositoryService & ActivityService & WikiService & LabelsService & SshKeyService &

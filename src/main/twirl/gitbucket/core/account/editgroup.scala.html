@@ -2,11 +2,21 @@
   members: List[gitbucket.core.model.GroupMember],
   info: Option[Any])(implicit context: gitbucket.core.controller.Context)
 @import gitbucket.core.view.helpers
+@import gitbucket.core.util.CsrfHelper
+
 @gitbucket.core.html.main("Edit group"){
   @gitbucket.core.account.html.menu("profile", account.userName, true){
     @gitbucket.core.helper.html.information(info)
+    
+    <!-- CSRF Meta Tag for AJAX requests -->
+    @CsrfHelper.metaTag(context.request)
+    
     <h2>Edit group</h2>
     <form id="form" method="post" action="@context.path/@account.userName/_editgroup" validate="true" autocomplete="off">
+      
+      <!-- CSRF Token - Critical for security -->
+      @CsrfHelper.tokenField(context.request)
+      
       @gitbucket.core.account.html.groupform(Some(account), members, false)
       <fieldset class="border-top">
         <div class="pull-right">
