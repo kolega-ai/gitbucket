@@ -425,12 +425,14 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   })
 
   post("/:userName/_personalToken", personalTokenForm)(oneselfOnly { form =>
-    val userName = params("userName")
-    getAccountByUserName(userName).foreach { _ =>
-      val (tokenId, token) = generateAccessToken(userName, form.note)
-      flash.update("generatedToken", (tokenId, token))
+    csrfProtected {
+      val userName = params("userName")
+      getAccountByUserName(userName).foreach { _ =>
+        val (tokenId, token) = generateAccessToken(userName, form.note)
+        flash.update("generatedToken", (tokenId, token))
+      }
+      redirect(s"/$userName/_application")
     }
-    redirect(s"/$userName/_application")
   })
 
   get("/:userName/_personalToken/delete/:id")(oneselfOnly {
