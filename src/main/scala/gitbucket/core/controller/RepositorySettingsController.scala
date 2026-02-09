@@ -35,6 +35,7 @@ class RepositorySettingsController
     with OwnerAuthenticator
     with UsersAuthenticator
     with RequestCache
+    with CsrfProtectionSupport
 
 trait RepositorySettingsControllerBase extends ControllerBase {
   self: RepositoryService & AccountService & WebHookService & ProtectedBranchService & CommitStatusService &
@@ -399,22 +400,24 @@ trait RepositorySettingsControllerBase extends ControllerBase {
    * Rename repository.
    */
   post("/:owner/:repository/settings/rename", renameForm)(ownerOnly { (form, repository) =>
-    context.withLoginAccount { loginAccount =>
-      if (context.settings.basicBehavior.repositoryOperation.rename || loginAccount.isAdmin) {
-        if (repository.name != form.repositoryName) {
-          // Update database and move git repository
-          renameRepository(repository.owner, repository.name, repository.owner, form.repositoryName)
-          // Record activity log
-          val renameInfo = RenameRepositoryInfo(
-            repository.owner,
-            form.repositoryName,
-            loginAccount.userName,
-            repository.name
-          )
-          recordActivity(renameInfo)
-        }
-        redirect(s"/${repository.owner}/${form.repositoryName}")
-      } else Forbidden()
+    csrfProtected {
+      context.withLoginAccount { loginAccount =>
+        if (context.settings.basicBehavior.repositoryOperation.rename || loginAccount.isAdmin) {
+          if (repository.name != form.repositoryName) {
+            // Update database and move git repository
+            renameRepository(repository.owner, repository.name, repository.owner, form.repositoryName)
+            // Record activity log
+            val renameInfo = RenameRepositoryInfo(
+              repository.owner,
+              form.repositoryName,
+              loginAccount.userName,
+              repository.name
+            )
+            recordActivity(renameInfo)
+          }
+          redirect(s"/${repository.owner}/${form.repositoryName}")
+        } else Forbidden()
+      }
     }
   })
 
@@ -422,23 +425,25 @@ trait RepositorySettingsControllerBase extends ControllerBase {
    * Transfer repository ownership.
    */
   post("/:owner/:repository/settings/transfer", transferForm)(ownerOnly { (form, repository) =>
-    context.withLoginAccount { loginAccount =>
-      if (context.settings.basicBehavior.repositoryOperation.transfer || loginAccount.isAdmin) {
-        // Change repository owner
-        if (repository.owner != form.newOwner) {
-          // Update database and move git repository
-          renameRepository(repository.owner, repository.name, form.newOwner, repository.name)
-          // Record activity log
-          val renameInfo = RenameRepositoryInfo(
-            form.newOwner,
-            repository.name,
-            loginAccount.userName,
-            repository.owner
-          )
-          recordActivity(renameInfo)
-        }
-        redirect(s"/${form.newOwner}/${repository.name}")
-      } else Forbidden()
+    csrfProtected {
+      context.withLoginAccount { loginAccount =>
+        if (context.settings.basicBehavior.repositoryOperation.transfer || loginAccount.isAdmin) {
+          // Change repository owner
+          if (repository.owner != form.newOwner) {
+            // Update database and move git repository
+            renameRepository(repository.owner, repository.name, form.newOwner, repository.name)
+            // Record activity log
+            val renameInfo = RenameRepositoryInfo(
+              form.newOwner,
+              repository.name,
+              loginAccount.userName,
+              repository.owner
+            )
+            recordActivity(renameInfo)
+          }
+          redirect(s"/${form.newOwner}/${repository.name}")
+        } else Forbidden()
+      }
     }
   })
 
@@ -446,12 +451,14 @@ trait RepositorySettingsControllerBase extends ControllerBase {
    * Delete the repository.
    */
   post("/:owner/:repository/settings/delete")(ownerOnly { repository =>
-    context.withLoginAccount { loginAccount =>
-      if (context.settings.basicBehavior.repositoryOperation.delete || loginAccount.isAdmin) {
-        // Delete the repository and related files
-        deleteRepository(repository.repository)
-        redirect(s"/${repository.owner}")
-      } else Forbidden()
+    csrfProtected {
+      context.withLoginAccount { loginAccount =>
+        if (context.settings.basicBehavior.repositoryOperation.delete || loginAccount.isAdmin) {
+          // Delete the repository and related files
+          deleteRepository(repository.repository)
+          redirect(s"/${repository.owner}")
+        } else Forbidden()
+      }
     }
   })
 
@@ -459,13 +466,15 @@ trait RepositorySettingsControllerBase extends ControllerBase {
    * Run GC
    */
   post("/:owner/:repository/settings/gc")(ownerOnly { repository =>
-    LockUtil.lock(s"${repository.owner}/${repository.name}") {
-      Using.resource(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
-        git.gc().call()
+    csrfProtected {
+      LockUtil.lock(s"${repository.owner}/${repository.name}") {
+        Using.resource(Git.open(getRepositoryDir(repository.owner, repository.name))) { git =>
+          git.gc().call()
+        }
       }
+      flash.update("info", "Garbage collection has been executed.")
+      redirect(s"/${repository.owner}/${repository.name}/settings/danger")
     }
-    flash.update("info", "Garbage collection has been executed.")
-    redirect(s"/${repository.owner}/${repository.name}/settings/danger")
   })
 
   /** List deploy keys */
