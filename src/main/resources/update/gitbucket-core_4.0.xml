@@ -7,7 +7,7 @@
   <createTable tableName="ACCOUNT">
     <column name="USER_NAME" type="varchar(100)" nullable="false"/>
     <column name="MAIL_ADDRESS" type="varchar(100)" nullable="false"/>
-    <column name="PASSWORD" type="varchar(40)" nullable="false"/>
+    <column name="PASSWORD" type="varchar(200)" nullable="false"/>
     <column name="ADMINISTRATOR" type="boolean" nullable="false"/>
     <column name="URL" type="varchar(200)" nullable="true"/>
     <column name="REGISTERED_DATE" type="datetime" nullable="false"/>
@@ -22,18 +22,12 @@
   <addPrimaryKey constraintName="IDX_ACCOUNT_PK" tableName="ACCOUNT" columnNames="USER_NAME"/>
   <addUniqueConstraint constraintName="IDX_ACCOUNT_1" tableName="ACCOUNT" columnNames="MAIL_ADDRESS"/>
 
-  <insert tableName="ACCOUNT">
-    <column name="USER_NAME" value="root"/>
-    <column name="FULL_NAME" value="root"/>
-    <column name="MAIL_ADDRESS" value="root@localhost"/>
-    <column name="PASSWORD" value="dc76e9f0c0006e8f919e0c515c66dbba3982f785"/>
-    <column name="ADMINISTRATOR" valueBoolean="true"/>
-    <column name="URL" value="https://github.com/gitbucket/gitbucket"/>
-    <column name="GROUP_ACCOUNT" valueBoolean="false"/>
-    <column name="REMOVED" valueBoolean="false"/>
-    <column name="REGISTERED_DATE" valueDate="${currentDateTime}"/>
-    <column name="UPDATED_DATE" valueDate="${currentDateTime}"/>
-  </insert>
+  <!-- 
+    SECURITY FIX: Replaced hardcoded password hash with custom migration
+    See: AdminAccountMigration.scala
+    Resolves: CWE-798 (Use of Hard-coded Credentials)
+  -->
+  <customChange class="gitbucket.core.util.AdminAccountMigration"/>
 
   <!--================================================================================================-->
   <!-- REPOSITORY -->
