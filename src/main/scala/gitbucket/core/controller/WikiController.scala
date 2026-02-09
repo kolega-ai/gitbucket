@@ -205,6 +205,12 @@ trait WikiControllerBase extends ControllerBase {
   })
 
   post("/:owner/:repository/wiki/_edit", editForm)(readableUsersOnly { (form, repository) =>
+    // Validate CSRF token
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
+    
     context.withLoginAccount { loginAccount =>
       if (isEditable(repository)) {
         saveWikiPage(
@@ -243,6 +249,12 @@ trait WikiControllerBase extends ControllerBase {
   })
 
   post("/:owner/:repository/wiki/_new", newForm)(readableUsersOnly { (form, repository) =>
+    // Validate CSRF token
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
+    
     context.withLoginAccount { loginAccount =>
       if (isEditable(repository)) {
         saveWikiPage(

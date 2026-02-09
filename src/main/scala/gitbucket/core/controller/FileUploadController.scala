@@ -75,6 +75,7 @@ class FileUploadController
   }
 
   post("/wiki/:owner/:repository") {
+    csrfGuard()
     setMultipartConfig()
     // Don't accept not logged-in users
     session.get(Keys.Session.LoginAccount).collect { case loginAccount: Account =>
