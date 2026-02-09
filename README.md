@@ -27,9 +27,54 @@ Installation
 GitBucket requires **Java 17**. You have to install it, if it is not already installed.
 
 1. Download the latest **gitbucket.war** from [the releases page](https://github.com/gitbucket/gitbucket/releases) and run it by `java -jar gitbucket.war`.
-2. Go to `http://[hostname]:8080/` and log in with ID: **root** / Pass: **root**.
+2. Go to `http://[hostname]:8080/` and log in with the admin credentials (see **Admin Password Configuration** below).
 
 You can also deploy `gitbucket.war` to a servlet container which supports Servlet 3.0 (like Jetty, Tomcat, JBoss, etc). Note that GitBucket doesn't support Jakarta EE yet.
+
+### Admin Password Configuration
+
+On first startup, GitBucket creates an admin account with username **root**. You can configure the initial password in several ways:
+
+#### Option 1: Environment Variable (Recommended)
+```bash
+export GITBUCKET_ADMIN_PASSWORD=your-secure-password
+java -jar gitbucket.war
+```
+
+#### Option 2: System Property  
+```bash
+java -Dgitbucket.admin.password=your-secure-password -jar gitbucket.war
+```
+
+#### Option 3: Auto-generated Password
+If no password is configured, GitBucket generates a secure random password and displays it in the startup logs. **This password is shown only once.**
+
+Look for this in your logs:
+```
+======================================================================
+GITBUCKET INITIAL SETUP
+======================================================================
+Generated admin password: xK9#mP2$vL5nQ8wR
+Username: root
+
+IMPORTANT: Change this password immediately after first login!
+======================================================================
+```
+
+#### Docker / Container Usage
+```bash
+# Docker
+docker run -e GITBUCKET_ADMIN_PASSWORD=your-password -p 8080:8080 gitbucket/gitbucket
+
+# Docker Compose
+services:
+  gitbucket:
+    image: gitbucket/gitbucket
+    environment:
+      - GITBUCKET_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    ports:
+      - "8080:8080"
+```
 
 For more information about installation on Mac or Windows Server (with IIS), or configuration of Apache or Nginx and also integration with other tools or services such as Jenkins or Slack, see [Wiki](https://github.com/gitbucket/gitbucket/wiki).
 
