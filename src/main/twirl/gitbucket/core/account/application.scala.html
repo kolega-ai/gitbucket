@@ -34,6 +34,7 @@
       </div>
     </div>
     <form method="POST" action="@context.path/@account.userName/_personalToken" validate="true" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="@context.csrfToken" />
       <div class="panel panel-default">
         <div class="panel-heading strong">Generate new token</div>
         <div class="panel-body">
