@@ -1,4 +1,4 @@
-@(account: gitbucket.core.model.Account, gpgKeys: List[gitbucket.core.model.GpgKey])(implicit context: gitbucket.core.controller.Context)
+@(account: gitbucket.core.model.Account, gpgKeys: List[gitbucket.core.model.GpgKey], csrfToken: String)(implicit context: gitbucket.core.controller.Context)
 @import gitbucket.core.ssh.SshUtil
 @gitbucket.core.html.main("GPG Keys"){
   @gitbucket.core.account.html.menu("gpg", context.loginAccount.get.userName, false){
@@ -7,17 +7,26 @@
       <div class="panel-body">
         @if(gpgKeys.isEmpty){
           No keys
-        }
-        @gpgKeys.zipWithIndex.map { case (key, i) =>
-          @if(i != 0){
-            <hr>
+        } else {
+          @gpgKeys.zipWithIndex.map { case (key, i) =>
+            @if(i != 0){
+              <hr>
+            }
+            <div style="margin-bottom: 10px;">
+              <strong style="line-height: 30px;">@key.title</strong> (@key.gpgKeyId.toHexString.toUpperCase)
+              <form method="POST" action="@context.path/@account.userName/_gpg/delete/@key.keyId" style="display: inline; float: right;" onsubmit="return confirm('Are you sure you want to delete this GPG key?');">
+                <input type="hidden" name="_csrf_token" value="@csrfToken" />
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </div>
           }
-        <strong style="line-height: 30px;">@key.title</strong> (@key.gpgKeyId.toHexString.toUpperCase)
-        <a href="@context.path/@account.userName/_gpg/delete/@key.keyId" class="btn btn-sm btn-danger pull-right">Delete</a>
         }
       </div>
     </div>
     <form method="POST" action="@context.path/@account.userName/_gpg" validate="true" autocomplete="off">
+      @* CSRF Protection Hidden Field *@
+      <input type="hidden" name="_csrf_token" value="@csrfToken" />
+      
       <div class="panel panel-default">
         <div class="panel-heading strong">Add a GPG Key</div>
         <div class="panel-body">
