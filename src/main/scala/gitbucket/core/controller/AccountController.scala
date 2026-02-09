@@ -834,6 +834,12 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   })
 
   post("/:owner/:repository/fork", accountForm)(readableUsersOnly { (form, repository) =>
+    // Validate CSRF token
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
+    
     context.withLoginAccount { loginAccount =>
       if (
         repository.repository.options.allowFork && (context.settings.basicBehavior.repositoryOperation.fork || loginAccount.isAdmin)
