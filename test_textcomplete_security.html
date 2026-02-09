@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jQuery Textcomplete Security Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="src/main/webapp/assets/vendors/jquery-textcomplete-1.8.4/jquery.textcomplete.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .test-container {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-input {
+            width: 100%;
+            min-height: 50px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .textcomplete-dropdown {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .textcomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .textcomplete-item:hover, .textcomplete-item.active {
+            background-color: #f5f5f5;
+        }
+        .textcomplete-header {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            padding: 5px 10px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .danger { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>jQuery Textcomplete Security Test</h1>
+    <p>This test verifies that XSS vulnerabilities have been fixed while maintaining functionality.</p>
+
+    <div class="test-container">
+        <h3>Test 1: Normal Autocomplete (should work)</h3>
+        <textarea class="test-input" id="test1" placeholder="Type @ to trigger autocomplete..."></textarea>
+        <div class="status success">Expected: Shows escaped user names without executing script</div>
+    </div>
+
+    <div class="test-container">
+        <h3>Test 2: XSS Prevention in Template (should NOT execute script)</h3>
+        <textarea class="test-input" id="test2" placeholder="Type # to trigger XSS test..."></textarea>
+        <div class="status danger">Expected: XSS payload should be escaped and rendered as text</div>
+    </div>
+
+    <div class="test-container">
+        <h3>Test 3: Trusted HTML (should render HTML safely)</h3>
+        <textarea class="test-input" id="test3" placeholder="Type $ to test trusted HTML..."></textarea>
+        <div class="status success">Expected: Shows formatted content with HTML structure</div>
+    </div>
+
+    <div class="test-container">
+        <h3>Test 4: ContentEditable XSS Prevention</h3>
+        <div contenteditable="true" class="test-input" id="test4" data-placeholder="Type & to test ContentEditable..."></div>
+        <div class="status success">Expected: Completion text inserted as safe text, not HTML</div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            console.log('Testing jQuery Textcomplete Security Fixes');
+            
+            // Test 1: Normal users with potential XSS in data
+            $('#test1').textcomplete([{
+                match: /@(\w*)$/,
+                search: function(term, callback) {
+                    var users = [
+                        { name: 'John Doe', username: 'john' },
+                        { name: 'Jane <script>alert("XSS")</script> Smith', username: 'jane' },
+                        { name: 'Bob <img src=x onerror=alert("XSS2")>', username: 'bob' }
+                    ];
+                    
+                    var matches = users.filter(function(user) {
+                        return user.name.toLowerCase().indexOf(term.toLowerCase()) !== -1 ||
+                               user.username.toLowerCase().indexOf(term.toLowerCase()) !== -1;
+                    });
+                    
+                    callback(matches);
+                },
+                template: function(user) {
+                    // Default behavior: should be escaped automatically
+                    return user.name + ' (@' + user.username + ')';
+                },
+                replace: function(user) {
+                    return '@' + user.username + ' ';
+                }
+            }]);
+
+            // Test 2: Explicit XSS test with malicious payload
+            $('#test2').textcomplete([{
+                match: /#(\w*)$/,
+                search: function(term, callback) {
+                    var maliciousData = [
+                        '<script>alert("XSS in template")</script>Malicious',
+                        '<img src=x onerror=alert("XSS2")>Image XSS',
+                        '"><svg onload=alert("XSS3")>SVG XSS'
+                    ];
+                    
+                    var matches = maliciousData.filter(function(item) {
+                        return item.toLowerCase().indexOf(term.toLowerCase()) !== -1;
+                    });
+                    
+                    callback(matches);
+                },
+                template: function(item) {
+                    // This should be escaped by default
+                    return item;
+                },
+                replace: function(item) {
+                    return '#' + item.replace(/<[^>]*>/g, '') + ' ';
+                },
+                header: function(data) {
+                    // Function headers should also be escaped
+                    return 'Searching for: <script>alert("header XSS")</script>' + (data.length > 0 ? data[0] : '');
+                }
+            }]);
+
+            // Test 3: Trusted HTML (safe usage)
+            $('#test3').textcomplete([{
+                match: /\$(\w*)$/,
+                search: function(term, callback) {
+                    var items = [
+                        { name: 'Important Item', type: 'critical' },
+                        { name: 'Normal Item', type: 'normal' },
+                        { name: 'Test <b>Bold</b> Item', type: 'normal' }
+                    ];
+                    
+                    callback(items);
+                },
+                template: function(item) {
+                    // Using trustedHTML for safe HTML structure while escaping user data
+                    if (typeof $.fn.textcomplete.trustedHTML === 'function' && 
+                        typeof $.fn.textcomplete.htmlEscape === 'function') {
+                        
+                        var escapedName = $.fn.textcomplete.htmlEscape(item.name);
+                        var cssClass = item.type === 'critical' ? 'critical-item' : 'normal-item';
+                        
+                        return $.fn.textcomplete.trustedHTML(
+                            '<div class="' + cssClass + '">' +
+                                '<strong>Name:</strong> ' + escapedName +
+                                ' <em>(' + item.type + ')</em>' +
+                            '</div>'
+                        );
+                    } else {
+                        // Fallback if utilities not available
+                        return item.name + ' (' + item.type + ')';
+                    }
+                },
+                replace: function(item) {
+                    return '$' + item.name.replace(/<[^>]*>/g, '') + ' ';
+                },
+                header: '<div style="font-weight: bold; color: blue;">Available Items:</div>'
+            }]);
+
+            // Test 4: ContentEditable
+            $('#test4').textcomplete([{
+                match: /&(\w*)$/,
+                search: function(term, callback) {
+                    var entities = [
+                        { name: 'amp', symbol: '&amp;', desc: 'Ampersand' },
+                        { name: 'lt', symbol: '&lt;', desc: 'Less than' },
+                        { name: 'gt', symbol: '&gt;', desc: 'Greater than' }
+                    ];
+                    
+                    callback(entities);
+                },
+                template: function(entity) {
+                    return entity.name + ' - ' + entity.desc + ' (' + entity.symbol + ')';
+                },
+                replace: function(entity) {
+                    return entity.symbol;
+                }
+            }]);
+
+            // Check if security utilities are exposed
+            if (typeof $.fn.textcomplete.htmlEscape === 'function') {
+                console.log('✓ htmlEscape utility is available');
+                
+                // Test the escape function
+                var testString = '<script>alert("test")</script>';
+                var escaped = $.fn.textcomplete.htmlEscape(testString);
+                console.log('Escape test:', testString, '->', escaped);
+                
+                if (escaped.indexOf('<script>') === -1) {
+                    console.log('✓ htmlEscape is working correctly');
+                } else {
+                    console.log('✗ htmlEscape failed to escape script tags');
+                }
+            } else {
+                console.log('✗ htmlEscape utility not found');
+            }
+
+            if (typeof $.fn.textcomplete.trustedHTML === 'function') {
+                console.log('✓ trustedHTML utility is available');
+            } else {
+                console.log('✗ trustedHTML utility not found');
+            }
+
+            console.log('Security tests initialized. Try typing @, #, $, or & in the text areas.');
+        });
+    </script>
+</body>
+</html>
