@@ -1,4 +1,4 @@
-@(token: String)(implicit context: gitbucket.core.controller.Context)
+@(token: String, csrfToken: String)(implicit context: gitbucket.core.controller.Context)
 @gitbucket.core.html.main("Reset your password"){
   <div class="content-wrapper main-center">
     <div class="content body">
@@ -11,6 +11,7 @@
         </fieldset>
         <input type="submit" class="btn btn-success" value="Submit"/>
         <input type="hidden" name="token" id="token" value="@token"/>
+        <input type="hidden" name="csrf_token" id="csrf_token" value="@csrfToken"/>
       </form>
     </div>
   </div>
