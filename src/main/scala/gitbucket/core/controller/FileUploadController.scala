@@ -12,6 +12,7 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.dircache.DirCache
 import org.eclipse.jgit.lib.{Constants, FileMode}
 import org.scalatra._
+import org.scalatra.forms.CsrfTokenSupport
 import org.scalatra.servlet.{FileItem, FileUploadSupport, MultipartConfig}
 import org.apache.commons.io.{FileUtils, IOUtils}
 
@@ -30,7 +31,8 @@ class FileUploadController
     with RepositoryService
     with AccountService
     with ReleaseService
-    with SystemSettingsService {
+    with SystemSettingsService
+    with CsrfTokenSupport {
 
   post("/image") {
     setMultipartConfig()
@@ -151,6 +153,7 @@ class FileUploadController
   }
 
   post("/import") {
+    csrfGuard()
     import JDBCUtil.*
     setMultipartConfig()
     session.get(Keys.Session.LoginAccount).collect {
