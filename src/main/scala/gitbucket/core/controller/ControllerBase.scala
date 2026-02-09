@@ -48,6 +48,68 @@ abstract class ControllerBase
 
   implicit val jsonFormats: Formats = gitbucket.core.api.JsonFormat.jsonFormats
 
+  // Secure random generator for CSRF tokens (thread-safe)
+  private val secureRandom = new java.security.SecureRandom()
+
+  /**
+   * Generates a cryptographically secure CSRF token.
+   * Uses 32 bytes of random data encoded as Base64.
+   */
+  protected def generateCsrfToken(): String = {
+    val bytes = new Array[Byte](32)
+    secureRandom.nextBytes(bytes)
+    java.util.Base64.getUrlEncoder.withoutPadding().encodeToString(bytes)
+  }
+
+  /**
+   * Gets the current CSRF token from session, generating one if not present.
+   * This ensures every session has a consistent token.
+   */
+  protected def csrfToken(implicit context: Context): String = {
+    context.request.getSession.getAttribute(Keys.Session.CsrfToken) match {
+      case token: String if token.nonEmpty => token
+      case _ =>
+        val token = generateCsrfToken()
+        context.request.getSession.setAttribute(Keys.Session.CsrfToken, token)
+        token
+    }
+  }
+
+  /**
+   * Validates the CSRF token from the request against the session token.
+   * Checks both form field and header for the token.
+   */
+  protected def validateCsrfToken()(implicit context: Context): Boolean = {
+    val sessionToken = Option(context.request.getSession.getAttribute(Keys.Session.CsrfToken).asInstanceOf[String])
+    
+    // Check form field first, then header
+    val requestToken = params.get("csrf_token")
+      .orElse(Option(context.request.getHeader("X-CSRF-Token")))
+    
+    (sessionToken, requestToken) match {
+      case (Some(expected), Some(actual)) => 
+        // Use constant-time comparison to prevent timing attacks
+        constantTimeEquals(expected, actual)
+      case _ => 
+        false
+    }
+  }
+
+  /**
+   * Constant-time string comparison to prevent timing attacks.
+   */
+  private def constantTimeEquals(a: String, b: String): Boolean = {
+    if (a.length != b.length) {
+      false
+    } else {
+      var result = 0
+      for (i <- a.indices) {
+        result |= a.charAt(i) ^ b.charAt(i)
+      }
+      result == 0
+    }
+  }
+
   private case class HttpException(status: Int) extends RuntimeException
 
   before("/api/v3/*") {
@@ -360,6 +422,20 @@ case class Context(
     case _                                => null
   }
   val sidebarCollapse: Boolean = request.getSession.getAttribute("sidebar-collapse") != null
+
+  /**
+   * Gets the CSRF token for the current session, generating one if needed.
+   */
+  def csrfToken: String = {
+    request.getSession.getAttribute(Keys.Session.CsrfToken) match {
+      case token: String if token.nonEmpty => token
+      case _ =>
+        val token = java.util.Base64.getUrlEncoder.withoutPadding()
+          .encodeToString(new java.security.SecureRandom().generateSeed(32))
+        request.getSession.setAttribute(Keys.Session.CsrfToken, token)
+        token
+    }
+  }
 
   def withLoginAccount(f: Account => Any): Any = {
     loginAccount match {

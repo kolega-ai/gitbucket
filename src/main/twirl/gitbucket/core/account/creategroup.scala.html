@@ -4,6 +4,7 @@
     <div class="content body">
       <h2>Create group</h2>
       <form id="form" method="post" action="@context.path/groups/new" validate="true">
+        <input type="hidden" name="csrf_token" value="@context.csrfToken" />
         @gitbucket.core.account.html.groupform(None, members, false)
         <fieldset class="border-top">
           <input type="submit" class="btn btn-success" value="Create group"/>
