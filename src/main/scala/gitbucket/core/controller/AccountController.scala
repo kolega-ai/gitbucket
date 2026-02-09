@@ -13,6 +13,7 @@ import gitbucket.core.util.Directory._
 import gitbucket.core.util.Implicits._
 import gitbucket.core.util.StringUtil._
 import gitbucket.core.util._
+import gitbucket.core.util.CsrfProtection
 import org.scalatra.i18n.Messages
 import org.scalatra.BadRequest
 import org.scalatra.forms._
@@ -37,7 +38,7 @@ class AccountController
     with RepositoryCreationService
     with RequestCache
 
-trait AccountControllerBase extends AccountManagementControllerBase {
+trait AccountControllerBase extends AccountManagementControllerBase with CsrfProtection {
   self: AccountService & RepositoryService & ActivityService & WikiService & LabelsService & SshKeyService &
     GpgKeyService & OneselfAuthenticator & UsersAuthenticator & GroupManagerAuthenticator & ReadableUsersAuthenticator &
     AccessTokenService & WebHookService & PrioritiesService & RepositoryCreationService =>
@@ -388,22 +389,25 @@ trait AccountControllerBase extends AccountManagementControllerBase {
   get("/:userName/_gpg")(oneselfOnly {
     val userName = params("userName")
     getAccountByUserName(userName).map { x =>
-      // html.ssh(x, getPublicKeys(x.userName))
-      html.gpg(x, getGpgPublicKeys(x.userName))
+      html.gpg(x, getGpgPublicKeys(x.userName), csrfToken)
     } getOrElse NotFound()
   })
 
   post("/:userName/_gpg", gpgKeyForm)(oneselfOnly { form =>
-    val userName = params("userName")
-    addGpgPublicKey(userName, form.title, form.publicKey)
-    redirect(s"/$userName/_gpg")
+    validateCsrfToken() {
+      val userName = params("userName")
+      addGpgPublicKey(userName, form.title, form.publicKey)
+      redirect(s"/$userName/_gpg")
+    }
   })
 
-  get("/:userName/_gpg/delete/:id")(oneselfOnly {
-    val userName = params("userName")
-    val keyId = params("id").toInt
-    deleteGpgPublicKey(userName, keyId)
-    redirect(s"/$userName/_gpg")
+  post("/:userName/_gpg/delete/:id")(oneselfOnly {
+    validateCsrfToken() {
+      val userName = params("userName")
+      val keyId = params("id").toInt
+      deleteGpgPublicKey(userName, keyId)
+      redirect(s"/$userName/_gpg")
+    }
   })
 
   get("/:userName/_application")(oneselfOnly {
