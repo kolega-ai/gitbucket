@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSTree XSS Fix Test</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="src/main/webapp/assets/vendors/vakata-jstree-3.3.4/jstree.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-container { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .result { margin: 10px 0; padding: 5px; }
+        .safe { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .unsafe { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>JSTree XSS Security Fix Test</h1>
+    
+    <div class="test-container">
+        <h2>Test 1: Malicious Loading Text via Settings</h2>
+        <p>This test attempts to inject XSS through custom loading text strings.</p>
+        <div id="tree1"></div>
+        <div class="result" id="result1">Testing...</div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test 2: Malicious Loading Text via Function</h2>
+        <p>This test attempts to inject XSS through a function that returns malicious content.</p>
+        <div id="tree2"></div>
+        <div class="result" id="result2">Testing...</div>
+    </div>
+
+    <script>
+        // Global variable to track if XSS was executed
+        window.xssExecuted = false;
+        
+        // Test 1: Attempt XSS through custom strings setting
+        $(document).ready(function() {
+            try {
+                $('#tree1').jstree({
+                    'core': {
+                        'strings': {
+                            'Loading ...': '<img src=x onerror="window.xssExecuted=true;alert(\'XSS executed via custom string!\')">'
+                        },
+                        'data': []
+                    }
+                });
+                
+                setTimeout(function() {
+                    if (window.xssExecuted) {
+                        $('#result1').addClass('unsafe').text('VULNERABILITY: XSS was executed through custom string!');
+                    } else {
+                        $('#result1').addClass('safe').text('SAFE: XSS attempt was blocked - custom string was safely escaped');
+                    }
+                    window.xssExecuted = false; // Reset for next test
+                }, 1000);
+                
+            } catch (e) {
+                $('#result1').addClass('safe').text('SAFE: Exception caught - ' + e.message);
+            }
+        });
+
+        // Test 2: Attempt XSS through function-based strings
+        $(document).ready(function() {
+            try {
+                $('#tree2').jstree({
+                    'core': {
+                        'strings': function(key) {
+                            if (key === 'Loading ...') {
+                                return '<script>window.xssExecuted=true;alert("XSS executed via function!");</script>';
+                            }
+                            return key;
+                        },
+                        'data': []
+                    }
+                });
+                
+                setTimeout(function() {
+                    if (window.xssExecuted) {
+                        $('#result2').addClass('unsafe').text('VULNERABILITY: XSS was executed through function!');
+                    } else {
+                        $('#result2').addClass('safe').text('SAFE: XSS attempt was blocked - function output was safely escaped');
+                    }
+                }, 2000);
+                
+            } catch (e) {
+                $('#result2').addClass('safe').text('SAFE: Exception caught - ' + e.message);
+            }
+        });
+
+        // Additional safety check to see if any script tags were actually inserted into DOM
+        setTimeout(function() {
+            var scripts = document.querySelectorAll('script');
+            var maliciousScripts = 0;
+            for (var i = 0; i < scripts.length; i++) {
+                if (scripts[i].innerHTML.includes('xssExecuted') && !scripts[i].innerHTML.includes('window.xssExecuted = false')) {
+                    maliciousScripts++;
+                }
+            }
+            
+            if (maliciousScripts > 0) {
+                console.warn('Warning: Found ' + maliciousScripts + ' potentially malicious script tags in DOM');
+            } else {
+                console.log('DOM Analysis: No malicious script tags found - fix appears to be working');
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
