@@ -412,6 +412,10 @@ trait IssuesControllerBase extends ControllerBase {
   })
 
   post("/:owner/:repository/issues/batchedit/state")(writableUsersOnly { repository =>
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
     val action = params.get("value")
     action match {
       case Some("open") =>
@@ -437,6 +441,10 @@ trait IssuesControllerBase extends ControllerBase {
   })
 
   post("/:owner/:repository/issues/batchedit/label")(writableUsersOnly { repository =>
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
     params("value").toIntOpt.map { labelId =>
       executeBatch(repository) { issueId =>
         getIssueLabel(repository.owner, repository.name, issueId, labelId) getOrElse {
@@ -450,6 +458,10 @@ trait IssuesControllerBase extends ControllerBase {
   })
 
   post("/:owner/:repository/issues/batchedit/assign")(writableUsersOnly { repository =>
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
     val value = assignedUserName("value")
     executeBatch(repository) {
       // updateAssignedUserName(repository.owner, repository.name, _, value, true)
@@ -466,6 +478,10 @@ trait IssuesControllerBase extends ControllerBase {
   })
 
   post("/:owner/:repository/issues/batchedit/milestone")(writableUsersOnly { repository =>
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
     val value = milestoneId("value")
     executeBatch(repository) {
       updateMilestoneId(repository.owner, repository.name, _, value, insertComment = true)
@@ -473,6 +489,10 @@ trait IssuesControllerBase extends ControllerBase {
   })
 
   post("/:owner/:repository/issues/batchedit/priority")(writableUsersOnly { repository =>
+    implicit val ctx = context
+    if (!validateCsrfToken()) {
+      halt(403, "CSRF token validation failed. Please refresh the page and try again.")
+    }
     val value = priorityId("value")
     executeBatch(repository) {
       updatePriorityId(repository.owner, repository.name, _, value, insertComment = true)
