@@ -50,6 +50,35 @@
 </div>
 <script>
 $(function(){
+  // ============================================================
+  // CSRF Token Management for AJAX
+  // ============================================================
+  
+  /**
+   * Gets the CSRF token from the meta tag.
+   * This is more secure than embedding in JS variables.
+   */
+  function getCsrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+  }
+  
+  /**
+   * Configure jQuery AJAX to automatically include CSRF token.
+   * This ensures all AJAX requests are protected.
+   */
+  $.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+      // Only add token to same-origin, state-changing requests
+      if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type)) {
+        var token = getCsrfToken();
+        if (token) {
+          xhr.setRequestHeader('X-CSRF-Token', token);
+        }
+      }
+    }
+  });
+
   $('input[type=submit]').click(function(){
     updateMembers();
   });
@@ -72,7 +101,7 @@ $(function(){
       return false;
     }
 
-    // check existence
+    // check existence - CSRF token automatically added by ajaxSetup
     $.post('@context.path/_user/existence', { 'userName': userName },
       function(data, status){
         if(data === 'user'){
@@ -80,6 +109,12 @@ $(function(){
           $('#memberName').val('');
         } else {
           $('#error-members').text('User does not exist.');
+        }
+      }).fail(function(xhr) {
+        if (xhr.status === 403) {
+          $('#error-members').text('Session expired. Please refresh the page.');
+        } else {
+          $('#error-members').text('Error checking user existence.');
         }
       });
   });
