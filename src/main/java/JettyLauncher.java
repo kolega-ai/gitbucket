@@ -138,18 +138,20 @@ public class JettyLauncher {
         final HttpConfiguration httpConfig = new HttpConfiguration();
         httpConfig.setSendServerVersion(false);
         if (connectorsSet.contains(Connectors.HTTPS)) {
-            httpConfig.setSecurePort(fallback(securePort, Defaults.HTTPS_PORT, Integer::parseInt));
+            // Parse secure port with validation for HTTP config (1024 to 65535 for non-privileged ports)
+            int securePortInt = parseIntegerSafely(securePort, Defaults.HTTPS_PORT, 1024, 65535, "secure port");
+            httpConfig.setSecurePort(securePortInt);
         }
-        if (jettyIdleTimeout != null && jettyIdleTimeout.trim().length() != 0) {
-            httpConfig.setIdleTimeout(Long.parseLong(jettyIdleTimeout.trim()));
-        } else {
-            httpConfig.setIdleTimeout(300000L); // default is 5min
-        }
+        // Parse Jetty idle timeout with validation (0.5 seconds to 24 hours)
+        long idleTimeout = parseLongSafely(jettyIdleTimeout, 300000L, 500L, 86400000L, "jettyIdleTimeout");
+        httpConfig.setIdleTimeout(idleTimeout);
 
         if (connectorsSet.contains(Connectors.HTTP)) {
             final ServerConnector connector = new ServerConnector(server, new HttpConnectionFactory(httpConfig));
             connector.setHost(hostName);
-            connector.setPort(fallback(port, Defaults.HTTP_PORT, Integer::parseInt));
+            // Parse HTTP port with validation (1024 to 65535 for non-privileged ports)
+            int httpPort = parseIntegerSafely(port, Defaults.HTTP_PORT, 1024, 65535, "HTTP port");
+            connector.setPort(httpPort);
 
             connectorInstances.add(connector);
         }
@@ -177,7 +179,9 @@ public class JettyLauncher {
                 new HttpConnectionFactory(httpsConfig));
 
             connector.setHost(hostName);
-            connector.setPort(fallback(securePort, Defaults.HTTPS_PORT, Integer::parseInt));
+            // Parse HTTPS port with validation (1024 to 65535 for non-privileged ports)
+            int httpsPort = parseIntegerSafely(securePort, Defaults.HTTPS_PORT, 1024, 65535, "HTTPS port");
+            connector.setPort(httpsPort);
 
             connectorInstances.add(connector);
         }
@@ -269,11 +273,77 @@ public class JettyLauncher {
     }
 
     private static <T, R> T fallback(R value, T defaultValue, Function<R, T> converter) {
-        return value == null ? defaultValue : converter.apply(value);
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return converter.apply(value);
+        } catch (NumberFormatException e) {
+            System.err.println("Warning: Invalid numeric value '" + value + "', using default value: " + defaultValue);
+            return defaultValue;
+        }
     }
 
     private static <T> T fallback(T value, T defaultValue) {
         return fallback(value, defaultValue, identity());
+    }
+
+    /**
+     * Safely parses an integer from a string with validation.
+     * @param value the string to parse
+     * @param defaultValue the default value if parsing fails
+     * @param minValue minimum allowed value (inclusive)
+     * @param maxValue maximum allowed value (inclusive) 
+     * @param parameterName name of the parameter for error messages
+     * @return the parsed integer or default value
+     */
+    private static int parseIntegerSafely(String value, int defaultValue, int minValue, int maxValue, String parameterName) {
+        if (value == null || value.trim().isEmpty()) {
+            return defaultValue;
+        }
+        
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            if (parsed < minValue || parsed > maxValue) {
+                System.err.println("Warning: " + parameterName + " value " + parsed + 
+                    " is out of valid range [" + minValue + ", " + maxValue + "], using default value: " + defaultValue);
+                return defaultValue;
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            System.err.println("Warning: Invalid " + parameterName + " value '" + value + 
+                "', using default value: " + defaultValue);
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Safely parses a long from a string with validation.
+     * @param value the string to parse
+     * @param defaultValue the default value if parsing fails
+     * @param minValue minimum allowed value (inclusive)
+     * @param maxValue maximum allowed value (inclusive)
+     * @param parameterName name of the parameter for error messages
+     * @return the parsed long or default value
+     */
+    private static long parseLongSafely(String value, long defaultValue, long minValue, long maxValue, String parameterName) {
+        if (value == null || value.trim().isEmpty()) {
+            return defaultValue;
+        }
+        
+        try {
+            long parsed = Long.parseLong(value.trim());
+            if (parsed < minValue || parsed > maxValue) {
+                System.err.println("Warning: " + parameterName + " value " + parsed + 
+                    " is out of valid range [" + minValue + ", " + maxValue + "], using default value: " + defaultValue);
+                return defaultValue;
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            System.err.println("Warning: Invalid " + parameterName + " value '" + value + 
+                "', using default value: " + defaultValue);
+            return defaultValue;
+        }
     }
 
     private static void require(boolean condition, String message) {
